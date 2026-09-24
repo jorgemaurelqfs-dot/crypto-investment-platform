@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../../../lib/supabase";
 import "../user-detail.css";
 
@@ -67,12 +67,18 @@ type UserDetails = {
 };
 
 export default function UserDetailsPage() {
-  const params = useParams();
   const router = useRouter();
 
-  const userId = Array.isArray(params?.id)
-    ? params.id[0]
-    : (params?.id as string);
+  /*
+   * GitHub Pages / static-export compatible routing.
+   *
+   * Instead of:
+   * /admin/users/[id]
+   *
+   * this page uses:
+   * /admin/users/view?id=USER_ID
+   */
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [user, setUser] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,10 +107,33 @@ export default function UserDetailsPage() {
   const [rejectionReason, setRejectionReason] =
     useState("");
 
+  /*
+   * Read the user ID from the URL query string.
+   *
+   * Example:
+   * /admin/users/view?id=123456
+   */
   useEffect(() => {
-    if (!userId) {
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    const id = params.get("id");
+
+    if (!id) {
       setError("No user ID was provided.");
       setLoading(false);
+      return;
+    }
+
+    setUserId(id);
+  }, []);
+
+  /*
+   * Load the user once the ID has been retrieved.
+   */
+  useEffect(() => {
+    if (!userId) {
       return;
     }
 
@@ -112,42 +141,56 @@ export default function UserDetailsPage() {
   }, [userId]);
 
   async function loadUser() {
+    if (!userId) {
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      const { data, error: rpcError } = await supabase.rpc(
-        "admin_get_user_details",
-        {
-          p_user_id: userId,
-        }
-      );
+      const { data, error: rpcError } =
+        await supabase.rpc(
+          "admin_get_user_details",
+          {
+            p_user_id: userId,
+          }
+        );
 
       if (rpcError) {
         throw new Error(rpcError.message);
       }
 
       if (!data) {
-        throw new Error("No user record was returned.");
+        throw new Error(
+          "No user record was returned."
+        );
       }
 
       const parsedUser =
-        typeof data === "string" ? JSON.parse(data) : data;
+        typeof data === "string"
+          ? JSON.parse(data)
+          : data;
 
       setUser(parsedUser);
 
       if (parsedUser.restrictions) {
         setRestrictions({
           login_restricted:
-            parsedUser.restrictions.login_restricted ?? false,
+            parsedUser.restrictions
+              .login_restricted ?? false,
+
           deposit_restricted:
-            parsedUser.restrictions.deposit_restricted ?? false,
+            parsedUser.restrictions
+              .deposit_restricted ?? false,
+
           investment_restricted:
-            parsedUser.restrictions.investment_restricted ??
-            false,
+            parsedUser.restrictions
+              .investment_restricted ?? false,
+
           withdrawal_restricted:
-            parsedUser.restrictions.withdrawal_restricted ??
-            false,
+            parsedUser.restrictions
+              .withdrawal_restricted ?? false,
         });
 
         setRestrictionReason(
@@ -165,9 +208,14 @@ export default function UserDetailsPage() {
   }
 
   async function setAccountStatus(
-    status: "active" | "suspended" | "closed"
+    status:
+      | "active"
+      | "suspended"
+      | "closed"
   ) {
-    if (!user?.profile?.id) return;
+    if (!user?.profile?.id) {
+      return;
+    }
 
     let reason = "";
 
@@ -177,7 +225,9 @@ export default function UserDetailsPage() {
           "Enter the reason for suspending this account:"
         ) || "";
 
-      if (!reason.trim()) return;
+      if (!reason.trim()) {
+        return;
+      }
     }
 
     if (status === "closed") {
@@ -185,27 +235,32 @@ export default function UserDetailsPage() {
         "Are you sure you want to close this account?"
       );
 
-      if (!confirmed) return;
+      if (!confirmed) {
+        return;
+      }
 
       reason =
         window.prompt(
           "Enter the reason for closing this account:"
         ) || "";
 
-      if (!reason.trim()) return;
+      if (!reason.trim()) {
+        return;
+      }
     }
 
     setActionLoading(true);
 
     try {
-      const { error: rpcError } = await supabase.rpc(
-        "admin_set_account_status",
-        {
-          p_user_id: user.profile.id,
-          p_status: status,
-          p_reason: reason || null,
-        }
-      );
+      const { error: rpcError } =
+        await supabase.rpc(
+          "admin_set_account_status",
+          {
+            p_user_id: user.profile.id,
+            p_status: status,
+            p_reason: reason || null,
+          }
+        );
 
       if (rpcError) {
         throw new Error(rpcError.message);
@@ -223,32 +278,42 @@ export default function UserDetailsPage() {
   }
 
   async function saveRestrictions() {
-    if (!user?.profile?.id) return;
+    if (!user?.profile?.id) {
+      return;
+    }
 
     setActionLoading(true);
 
     try {
-      const { error: rpcError } = await supabase.rpc(
-        "admin_update_account_restrictions",
-        {
-          p_user_id: user.profile.id,
-          p_login_restricted:
-            restrictions.login_restricted,
-          p_deposit_restricted:
-            restrictions.deposit_restricted,
-          p_investment_restricted:
-            restrictions.investment_restricted,
-          p_withdrawal_restricted:
-            restrictions.withdrawal_restricted,
-          p_reason: restrictionReason || null,
-        }
-      );
+      const { error: rpcError } =
+        await supabase.rpc(
+          "admin_update_account_restrictions",
+          {
+            p_user_id: user.profile.id,
+
+            p_login_restricted:
+              restrictions.login_restricted,
+
+            p_deposit_restricted:
+              restrictions.deposit_restricted,
+
+            p_investment_restricted:
+              restrictions.investment_restricted,
+
+            p_withdrawal_restricted:
+              restrictions.withdrawal_restricted,
+
+            p_reason:
+              restrictionReason || null,
+          }
+        );
 
       if (rpcError) {
         throw new Error(rpcError.message);
       }
 
       setShowRestrictionPanel(false);
+
       await loadUser();
     } catch (err: any) {
       alert(
@@ -263,10 +328,18 @@ export default function UserDetailsPage() {
   async function reviewVerification(
     status: "verified" | "rejected"
   ) {
-    if (!profile?.id) return;
+    if (!user?.profile?.id) {
+      return;
+    }
 
-    if (status === "rejected" && !rejectionReason.trim()) {
-      alert("Please enter a reason for rejecting the verification.");
+    if (
+      status === "rejected" &&
+      !rejectionReason.trim()
+    ) {
+      alert(
+        "Please enter a reason for rejecting the verification."
+      );
+
       return;
     }
 
@@ -276,22 +349,27 @@ export default function UserDetailsPage() {
         : "Reject this customer's verification? All pending verification documents will be marked rejected."
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     setVerificationActionLoading(true);
 
     try {
-      const { error: rpcError } = await supabase.rpc(
-        "admin_review_verification",
-        {
-          p_user_id: profile.id,
-          p_status: status,
-          p_rejection_reason:
-            status === "rejected"
-              ? rejectionReason.trim()
-              : null,
-        }
-      );
+      const { error: rpcError } =
+        await supabase.rpc(
+          "admin_review_verification",
+          {
+            p_user_id: user.profile.id,
+
+            p_status: status,
+
+            p_rejection_reason:
+              status === "rejected"
+                ? rejectionReason.trim()
+                : null,
+          }
+        );
 
       if (rpcError) {
         throw new Error(rpcError.message);
@@ -327,6 +405,7 @@ export default function UserDetailsPage() {
       alert(
         "This document does not have a storage path recorded."
       );
+
       return;
     }
 
@@ -339,7 +418,10 @@ export default function UserDetailsPage() {
             300
           );
 
-      if (signedUrlError || !data?.signedUrl) {
+      if (
+        signedUrlError ||
+        !data?.signedUrl
+      ) {
         throw new Error(
           signedUrlError?.message ||
             "Unable to create a secure document link."
@@ -359,12 +441,18 @@ export default function UserDetailsPage() {
     }
   }
 
-  function formatDate(value: string | null) {
-    if (!value) return "Never";
+  function formatDate(
+    value: string | null
+  ) {
+    if (!value) {
+      return "Never";
+    }
 
     const date = new Date(value);
 
-    if (Number.isNaN(date.getTime())) {
+    if (
+      Number.isNaN(date.getTime())
+    ) {
       return value;
     }
 
@@ -373,19 +461,20 @@ export default function UserDetailsPage() {
 
   /*
    * MONEY / CRYPTO FORMATTER
-   *
-   * Intl.NumberFormat only accepts valid ISO-4217
-   * currency codes when style="currency" is used.
-   *
-   * USDT, BTC, ETH, etc. are crypto symbols and
-   * therefore need to be formatted manually.
    */
   function formatMoney(
-    amount: number | string | null | undefined,
+    amount:
+      | number
+      | string
+      | null
+      | undefined,
     currency = "USD"
   ) {
     const value = Number(amount || 0);
-    const code = String(currency || "USD").toUpperCase();
+
+    const code = String(
+      currency || "USD"
+    ).toUpperCase();
 
     /*
      * Crypto assets
@@ -416,15 +505,20 @@ export default function UserDetailsPage() {
       "OP",
     ];
 
-    if (cryptoCurrencies.includes(code)) {
-      return `${code} ${value.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 8,
-      })}`;
+    if (
+      cryptoCurrencies.includes(code)
+    ) {
+      return `${code} ${value.toLocaleString(
+        "en-US",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 8,
+        }
+      )}`;
     }
 
     /*
-     * Fiat currencies supported by Intl.NumberFormat
+     * Fiat currencies
      */
     const fiatCurrencies = [
       "USD",
@@ -456,41 +550,60 @@ export default function UserDetailsPage() {
       "MXN",
     ];
 
-    if (fiatCurrencies.includes(code)) {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: code,
-        maximumFractionDigits: 2,
-      }).format(value);
+    if (
+      fiatCurrencies.includes(code)
+    ) {
+      return new Intl.NumberFormat(
+        "en-US",
+        {
+          style: "currency",
+          currency: code,
+          maximumFractionDigits: 2,
+        }
+      ).format(value);
     }
 
     /*
-     * Unknown currency fallback.
-     *
-     * This prevents the page from crashing even if
-     * another asset/currency is added to Supabase later.
+     * Unknown currency fallback
      */
-    return `${code} ${value.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 8,
-    })}`;
+    return `${code} ${value.toLocaleString(
+      "en-US",
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 8,
+      }
+    )}`;
   }
 
-  function formatFileSize(size: number | null) {
-    if (!size) return "Unknown size";
+  function formatFileSize(
+    size: number | null
+  ) {
+    if (!size) {
+      return "Unknown size";
+    }
 
     if (size < 1024) {
       return `${size} B`;
     }
 
-    if (size < 1024 * 1024) {
-      return `${(size / 1024).toFixed(1)} KB`;
+    if (
+      size <
+      1024 * 1024
+    ) {
+      return `${(
+        size / 1024
+      ).toFixed(1)} KB`;
     }
 
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(
+      size /
+      (1024 * 1024)
+    ).toFixed(1)} MB`;
   }
 
-  function statusClass(status: string | null) {
+  function statusClass(
+    status: string | null
+  ) {
     switch (status) {
       case "active":
       case "approved":
@@ -510,7 +623,9 @@ export default function UserDetailsPage() {
     }
   }
 
-  function documentName(type: string) {
+  function documentName(
+    type: string
+  ) {
     switch (type) {
       case "passport":
         return "Passport";
@@ -529,6 +644,9 @@ export default function UserDetailsPage() {
     }
   }
 
+  /*
+   * LOADING STATE
+   */
   if (loading) {
     return (
       <main className="user-detail-page">
@@ -537,24 +655,38 @@ export default function UserDetailsPage() {
             <div className="loading-dot" />
           </div>
 
-          <h2>Loading User Intelligence</h2>
+          <h2>
+            Loading User Intelligence
+          </h2>
 
           <p>
-            Retrieving account profile, authentication
-            records and financial information...
+            Retrieving account profile,
+            authentication records and
+            financial information...
           </p>
         </div>
       </main>
     );
   }
 
-  if (error || !user || !user.profile) {
+  /*
+   * ERROR STATE
+   */
+  if (
+    error ||
+    !user ||
+    !user.profile
+  ) {
     return (
       <main className="user-detail-page">
         <div className="detail-error">
-          <div className="error-icon">!</div>
+          <div className="error-icon">
+            !
+          </div>
 
-          <h2>Unable To Load User Record</h2>
+          <h2>
+            Unable To Load User Record
+          </h2>
 
           <p>
             {error ||
@@ -565,7 +697,9 @@ export default function UserDetailsPage() {
             <button
               className="secondary-button"
               onClick={() =>
-                router.push("/admin/users")
+                router.push(
+                  "/admin/users"
+                )
               }
             >
               ← Back To Users
@@ -588,14 +722,16 @@ export default function UserDetailsPage() {
   const totalWalletBalance =
     user.wallet_balances.reduce(
       (total, item) =>
-        total + Number(item.balance || 0),
+        total +
+        Number(item.balance || 0),
       0
     );
 
   const totalProfitBalance =
     user.profit_balances.reduce(
       (total, item) =>
-        total + Number(item.balance || 0),
+        total +
+        Number(item.balance || 0),
       0
     );
 
@@ -604,10 +740,14 @@ export default function UserDetailsPage() {
       ?.split(" ")
       .filter(Boolean)
       .slice(0, 2)
-      .map((name) => name[0])
+      .map(
+        (name) => name[0]
+      )
       .join("")
       .toUpperCase() ||
-    profile.username?.slice(0, 2).toUpperCase() ||
+    profile.username
+      ?.slice(0, 2)
+      .toUpperCase() ||
     "US";
 
   return (
@@ -615,13 +755,16 @@ export default function UserDetailsPage() {
       <div className="detail-background-grid" />
 
       <div className="detail-container">
+
         {/* HEADER */}
         <header className="detail-header">
           <div>
             <button
               className="back-button"
               onClick={() =>
-                router.push("/admin/users")
+                router.push(
+                  "/admin/users"
+                )
               }
             >
               <span>←</span>
@@ -634,7 +777,8 @@ export default function UserDetailsPage() {
 
                 <span
                   className={`online-indicator ${
-                    profile.account_status === "active"
+                    profile.account_status ===
+                    "active"
                       ? "online"
                       : "offline"
                   }`}
@@ -763,7 +907,8 @@ export default function UserDetailsPage() {
               </span>
 
               <strong>
-                {user.counts?.investments || 0}
+                {user.counts
+                  ?.investments || 0}
               </strong>
 
               <small>
@@ -783,8 +928,10 @@ export default function UserDetailsPage() {
               </span>
 
               <strong>
-                {(user.counts?.deposits || 0) +
-                  (user.counts?.withdrawals || 0)}
+                {(user.counts
+                  ?.deposits || 0) +
+                  (user.counts
+                    ?.withdrawals || 0)}
               </strong>
 
               <small>
@@ -795,8 +942,10 @@ export default function UserDetailsPage() {
         </section>
 
         <div className="content-grid">
+
           {/* LEFT COLUMN */}
           <div className="main-column">
+
             {/* PROFILE */}
             <section className="panel">
               <div className="panel-header">
@@ -817,7 +966,9 @@ export default function UserDetailsPage() {
 
               <div className="information-grid">
                 <div className="info-field">
-                  <span>FULL NAME</span>
+                  <span>
+                    FULL NAME
+                  </span>
 
                   <strong>
                     {profile.full_name ||
@@ -826,7 +977,9 @@ export default function UserDetailsPage() {
                 </div>
 
                 <div className="info-field">
-                  <span>USERNAME</span>
+                  <span>
+                    USERNAME
+                  </span>
 
                   <strong>
                     {profile.username
@@ -836,7 +989,9 @@ export default function UserDetailsPage() {
                 </div>
 
                 <div className="info-field">
-                  <span>PHONE NUMBER</span>
+                  <span>
+                    PHONE NUMBER
+                  </span>
 
                   <strong>
                     {profile.phone ||
@@ -845,7 +1000,9 @@ export default function UserDetailsPage() {
                 </div>
 
                 <div className="info-field">
-                  <span>COUNTRY</span>
+                  <span>
+                    COUNTRY
+                  </span>
 
                   <strong>
                     {profile.country ||
@@ -854,7 +1011,9 @@ export default function UserDetailsPage() {
                 </div>
 
                 <div className="info-field">
-                  <span>REFERRAL CODE</span>
+                  <span>
+                    REFERRAL CODE
+                  </span>
 
                   <strong className="mono">
                     {profile.referral_code ||
@@ -863,7 +1022,9 @@ export default function UserDetailsPage() {
                 </div>
 
                 <div className="info-field">
-                  <span>ACCOUNT CREATED</span>
+                  <span>
+                    ACCOUNT CREATED
+                  </span>
 
                   <strong>
                     {formatDate(
@@ -985,6 +1146,7 @@ export default function UserDetailsPage() {
               </div>
 
               <div className="balance-sections">
+
                 <div className="balance-block">
                   <div className="balance-block-title">
                     <span>
@@ -1234,7 +1396,10 @@ export default function UserDetailsPage() {
                     <span className="panel-kicker">
                       ADMIN REVIEW
                     </span>
-                    <h3>Verification Decision</h3>
+
+                    <h3>
+                      Verification Decision
+                    </h3>
                   </div>
 
                   <span
@@ -1258,7 +1423,8 @@ export default function UserDetailsPage() {
 
                 {user.verification_documents?.some(
                   (document) =>
-                    document.status === "pending"
+                    document.status ===
+                    "pending"
                 ) && (
                   <div className="verification-pending-note">
                     <span>●</span>
@@ -1285,6 +1451,7 @@ export default function UserDetailsPage() {
                           }
                         >
                           <span>↗</span>
+
                           Open{" "}
                           {documentName(
                             document.document_type
@@ -1304,11 +1471,14 @@ export default function UserDetailsPage() {
                         verificationActionLoading ||
                         !user.verification_documents?.some(
                           (document) =>
-                            document.status === "pending"
+                            document.status ===
+                            "pending"
                         )
                       }
                       onClick={() =>
-                        reviewVerification("verified")
+                        reviewVerification(
+                          "verified"
+                        )
                       }
                     >
                       {verificationActionLoading
@@ -1323,11 +1493,14 @@ export default function UserDetailsPage() {
                         verificationActionLoading ||
                         !user.verification_documents?.some(
                           (document) =>
-                            document.status === "pending"
+                            document.status ===
+                            "pending"
                         )
                       }
                       onClick={() =>
-                        setRejectingVerification(true)
+                        setRejectingVerification(
+                          true
+                        )
                       }
                     >
                       × Reject Verification
@@ -1354,10 +1527,17 @@ export default function UserDetailsPage() {
                       <button
                         type="button"
                         className="secondary-button"
-                        disabled={verificationActionLoading}
+                        disabled={
+                          verificationActionLoading
+                        }
                         onClick={() => {
-                          setRejectingVerification(false);
-                          setRejectionReason("");
+                          setRejectingVerification(
+                            false
+                          );
+
+                          setRejectionReason(
+                            ""
+                          );
                         }}
                       >
                         Cancel
@@ -1371,7 +1551,9 @@ export default function UserDetailsPage() {
                           !rejectionReason.trim()
                         }
                         onClick={() =>
-                          reviewVerification("rejected")
+                          reviewVerification(
+                            "rejected"
+                          )
                         }
                       >
                         {verificationActionLoading
@@ -1387,6 +1569,7 @@ export default function UserDetailsPage() {
 
           {/* RIGHT COLUMN */}
           <aside className="side-column">
+
             {/* ACCOUNT CONTROL */}
             <section className="control-panel">
               <div className="control-header">
@@ -1423,7 +1606,9 @@ export default function UserDetailsPage() {
                     "closed" ? (
                   <button
                     className="control-button activate"
-                    disabled={actionLoading}
+                    disabled={
+                      actionLoading
+                    }
                     onClick={() =>
                       setAccountStatus(
                         "active"
@@ -1436,7 +1621,9 @@ export default function UserDetailsPage() {
                 ) : (
                   <button
                     className="control-button suspend"
-                    disabled={actionLoading}
+                    disabled={
+                      actionLoading
+                    }
                     onClick={() =>
                       setAccountStatus(
                         "suspended"
@@ -1450,7 +1637,9 @@ export default function UserDetailsPage() {
 
                 <button
                   className="control-button restrict"
-                  disabled={actionLoading}
+                  disabled={
+                    actionLoading
+                  }
                   onClick={() =>
                     setShowRestrictionPanel(
                       !showRestrictionPanel
@@ -1465,7 +1654,9 @@ export default function UserDetailsPage() {
                   "closed" && (
                   <button
                     className="control-button close"
-                    disabled={actionLoading}
+                    disabled={
+                      actionLoading
+                    }
                     onClick={() =>
                       setAccountStatus(
                         "closed"
@@ -1498,6 +1689,7 @@ export default function UserDetailsPage() {
               </div>
 
               <div className="restriction-list">
+
                 <div className="restriction-item">
                   <div>
                     <strong>
@@ -1604,6 +1796,7 @@ export default function UserDetailsPage() {
                       : "ALLOWED"}
                   </span>
                 </div>
+
               </div>
 
               {user.restrictions?.reason && (
@@ -1650,8 +1843,8 @@ export default function UserDetailsPage() {
                 </span>
 
                 <strong>
-                  {user.counts?.deposits ||
-                    0}
+                  {user.counts
+                    ?.deposits || 0}
                 </strong>
               </div>
 
@@ -1705,7 +1898,9 @@ export default function UserDetailsPage() {
           <div
             className="modal-overlay"
             onClick={() =>
-              setShowRestrictionPanel(false)
+              setShowRestrictionPanel(
+                false
+              )
             }
           >
             <div
@@ -1745,6 +1940,7 @@ export default function UserDetailsPage() {
               </div>
 
               <div className="restriction-controls">
+
                 <label className="restriction-toggle">
                   <div>
                     <strong>
@@ -1765,6 +1961,7 @@ export default function UserDetailsPage() {
                     onChange={(event) =>
                       setRestrictions({
                         ...restrictions,
+
                         login_restricted:
                           event.target
                             .checked,
@@ -1795,6 +1992,7 @@ export default function UserDetailsPage() {
                     onChange={(event) =>
                       setRestrictions({
                         ...restrictions,
+
                         deposit_restricted:
                           event.target
                             .checked,
@@ -1825,6 +2023,7 @@ export default function UserDetailsPage() {
                     onChange={(event) =>
                       setRestrictions({
                         ...restrictions,
+
                         investment_restricted:
                           event.target
                             .checked,
@@ -1855,6 +2054,7 @@ export default function UserDetailsPage() {
                     onChange={(event) =>
                       setRestrictions({
                         ...restrictions,
+
                         withdrawal_restricted:
                           event.target
                             .checked,
@@ -1864,6 +2064,7 @@ export default function UserDetailsPage() {
 
                   <span className="toggle-ui" />
                 </label>
+
               </div>
 
               <div className="reason-field">
@@ -1897,8 +2098,12 @@ export default function UserDetailsPage() {
 
                 <button
                   className="primary-button"
-                  disabled={actionLoading}
-                  onClick={saveRestrictions}
+                  disabled={
+                    actionLoading
+                  }
+                  onClick={
+                    saveRestrictions
+                  }
                 >
                   {actionLoading
                     ? "Saving..."

@@ -174,7 +174,37 @@ export default function AssetsPage() {
         throw new Error(walletError.message);
       }
 
-      setWallets((data || []) as DepositWallet[]);
+      /*
+       * Supabase may return relationship fields as arrays even when
+       * the database relationship represents one related record.
+       *
+       * Normalize those relationship values into the shape expected
+       * by DepositWallet.
+       */
+      const normalizedWallets: DepositWallet[] = (data || []).map(
+        (wallet: any) => ({
+          id: wallet.id,
+          currency: wallet.currency,
+          network: wallet.network,
+          wallet_address: wallet.wallet_address,
+          is_active: wallet.is_active,
+          wallet_label: wallet.wallet_label,
+          asset_id: wallet.asset_id,
+          network_id: wallet.network_id,
+          created_at: wallet.created_at,
+          updated_at: wallet.updated_at,
+
+          assets: Array.isArray(wallet.assets)
+            ? wallet.assets[0] || null
+            : wallet.assets || null,
+
+          networks: Array.isArray(wallet.networks)
+            ? wallet.networks[0] || null
+            : wallet.networks || null,
+        })
+      );
+
+      setWallets(normalizedWallets);
     } catch (err: any) {
       setError(err?.message || "Unable to load wallet configuration.");
     } finally {
@@ -184,7 +214,7 @@ export default function AssetsPage() {
 
   function openCreate() {
     setEditingWallet(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
     setError("");
     setMessage("");
     setShowModal(true);
@@ -197,10 +227,7 @@ export default function AssetsPage() {
       assetName: wallet.assets?.name || wallet.currency || "",
       symbol: wallet.assets?.symbol || wallet.currency || "",
       logoUrl: wallet.assets?.logo_url || "",
-      network:
-        wallet.networks?.name ||
-        wallet.network ||
-        "",
+      network: wallet.networks?.name || wallet.network || "",
       walletAddress: wallet.wallet_address || "",
       active: wallet.is_active,
     });
@@ -215,7 +242,7 @@ export default function AssetsPage() {
 
     setShowModal(false);
     setEditingWallet(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
   }
 
   async function findOrCreateAsset() {
@@ -259,15 +286,13 @@ export default function AssetsPage() {
       return existing.id;
     }
 
-    const { error: insertError } = await supabase
-      .from("assets")
-      .insert({
-        name,
-        symbol,
-        logo_url: form.logoUrl.trim() || null,
-        decimals: 8,
-        is_active: true,
-      });
+    const { error: insertError } = await supabase.from("assets").insert({
+      name,
+      symbol,
+      logo_url: form.logoUrl.trim() || null,
+      decimals: 8,
+      is_active: true,
+    });
 
     if (insertError) {
       throw new Error(insertError.message);
@@ -328,13 +353,11 @@ export default function AssetsPage() {
       return existing.id;
     }
 
-    const { error: insertError } = await supabase
-      .from("networks")
-      .insert({
-        name: networkName,
-        short_name: shortName,
-        is_active: true,
-      });
+    const { error: insertError } = await supabase.from("networks").insert({
+      name: networkName,
+      short_name: shortName,
+      is_active: true,
+    });
 
     if (insertError) {
       throw new Error(insertError.message);
@@ -640,6 +663,7 @@ export default function AssetsPage() {
         <section className="asset-toolbar">
           <div className="search-box">
             <span>⌕</span>
+
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -685,7 +709,9 @@ export default function AssetsPage() {
         ) : filteredWallets.length === 0 ? (
           <section className="empty-wallet-state">
             <div className="empty-orb">◇</div>
+
             <h2>No wallet configurations found</h2>
+
             <p>
               Add your first custom asset and receiving wallet to make it
               available on the investor deposit page.
@@ -751,6 +777,7 @@ export default function AssetsPage() {
                   <div className="network-row">
                     <div>
                       <small>NETWORK</small>
+
                       <strong>
                         {wallet.networks?.name || wallet.network}
                       </strong>
@@ -834,9 +861,7 @@ export default function AssetsPage() {
                 </span>
 
                 <h2>
-                  {editingWallet
-                    ? "Edit Wallet"
-                    : "Add Custom Asset"}
+                  {editingWallet ? "Edit Wallet" : "Add Custom Asset"}
                 </h2>
 
                 <p>
@@ -860,14 +885,13 @@ export default function AssetsPage() {
                     }}
                   />
                 ) : (
-                  <span>
-                    {getInitials(form.assetName || "AS")}
-                  </span>
+                  <span>{getInitials(form.assetName || "AS")}</span>
                 )}
               </div>
 
               <div>
                 <strong>{form.assetName || "Asset Name"}</strong>
+
                 <span>
                   {form.symbol.toUpperCase() || "SYMBOL"} ·{" "}
                   {form.network || "Network"}
@@ -883,6 +907,7 @@ export default function AssetsPage() {
             <div className="form-grid">
               <label className="form-field">
                 <span>Asset Name</span>
+
                 <input
                   value={form.assetName}
                   onChange={(event) =>
@@ -897,6 +922,7 @@ export default function AssetsPage() {
 
               <label className="form-field">
                 <span>Asset Symbol</span>
+
                 <input
                   value={form.symbol}
                   onChange={(event) =>
@@ -912,6 +938,7 @@ export default function AssetsPage() {
 
               <label className="form-field full">
                 <span>Wallet Logo URL</span>
+
                 <input
                   value={form.logoUrl}
                   onChange={(event) =>
@@ -922,6 +949,7 @@ export default function AssetsPage() {
                   }
                   placeholder="https://example.com/logo.png"
                 />
+
                 <small>
                   Use a public HTTPS image URL for the asset logo.
                 </small>
@@ -929,6 +957,7 @@ export default function AssetsPage() {
 
               <label className="form-field">
                 <span>Network</span>
+
                 <input
                   value={form.network}
                   onChange={(event) =>
@@ -943,6 +972,7 @@ export default function AssetsPage() {
 
               <label className="form-field">
                 <span>Wallet Address</span>
+
                 <input
                   value={form.walletAddress}
                   onChange={(event) =>
@@ -958,6 +988,7 @@ export default function AssetsPage() {
               <div className="active-config full">
                 <div>
                   <strong>Wallet availability</strong>
+
                   <span>
                     {form.active
                       ? "Visible to investors on Deposit"
@@ -982,8 +1013,10 @@ export default function AssetsPage() {
 
             <div className="modal-security-note">
               <span>◉</span>
+
               <div>
                 <strong>Configuration control</strong>
+
                 <p>
                   Only active wallet configurations are exposed to the
                   investor deposit interface.
