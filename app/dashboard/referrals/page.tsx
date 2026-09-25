@@ -100,7 +100,7 @@ export default function ReferralsPage() {
       }
 
       if (!user) {
-        window.location.href = "/login";
+        window.location.href = "/crypto-investment-platform/login";
         return;
       }
 

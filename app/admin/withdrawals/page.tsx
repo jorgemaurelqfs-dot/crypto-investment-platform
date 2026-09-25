@@ -229,7 +229,7 @@ export default function AdminWithdrawalsPage() {
   }
 
   function formatDate(date: string | null) {
-    if (!date) return "—";
+    if (!date) return "â€”";
 
     return new Date(date).toLocaleString(undefined, {
       year: "numeric",
@@ -241,7 +241,7 @@ export default function AdminWithdrawalsPage() {
   }
 
   function shortenAddress(address: string) {
-    if (!address) return "—";
+    if (!address) return "â€”";
 
     if (address.length <= 22) {
       return address;
@@ -452,24 +452,24 @@ export default function AdminWithdrawalsPage() {
         </div>
 
         <nav className="sidebar-nav">
-          <a href="/admin">Dashboard</a>
-          <a href="/admin/users">Users</a>
-          <a href="/admin/investments">Investments</a>
-          <a href="/admin/investment-plans">Investment Plans</a>
-          <a href="/admin/assets">Assets & Networks</a>
-          <a href="/admin/deposit-wallets">Deposit Wallets</a>
-          <a href="/admin/deposits">Deposits</a>
+          <a href="/crypto-investment-platform/admin/">Dashboard</a>
+          <a href="/crypto-investment-platform/admin/users/">Users</a>
+          <a href="/crypto-investment-platform/admin/investments/">Investments</a>
+          <a href="/crypto-investment-platform/admin/investment-plans/">Investment Plans</a>
+          <a href="/crypto-investment-platform/admin/assets/">Assets & Networks</a>
+          <a href="/crypto-investment-platform/admin/deposit-wallets/">Deposit Wallets</a>
+          <a href="/crypto-investment-platform/admin/deposits/">Deposits</a>
           <a
-            href="/admin/withdrawals"
+            href="/crypto-investment-platform/admin/withdrawals/"
             className="active"
           >
             Withdrawals
           </a>
-          <a href="/admin/transactions">Transactions</a>
-          <a href="/admin/referrals">Referrals</a>
-          <a href="/admin/notifications">Notifications</a>
-          <a href="/admin/audit-logs">Audit Logs</a>
-          <a href="/admin/settings">Settings</a>
+          <a href="/crypto-investment-platform/admin/transactions/">Transactions</a>
+          <a href="/crypto-investment-platform/admin/referrals/">Referrals</a>
+          <a href="/crypto-investment-platform/admin/notifications/">Notifications</a>
+          <a href="/crypto-investment-platform/admin/audit-logs/">Audit Logs</a>
+          <a href="/crypto-investment-platform/admin/settings/">Settings</a>
         </nav>
 
         <div className="sidebar-security">
@@ -500,7 +500,7 @@ export default function AdminWithdrawalsPage() {
             onClick={loadWithdrawals}
             disabled={loading}
           >
-            {loading ? "Refreshing..." : "↻ Refresh"}
+            {loading ? "Refreshing..." : "â†» Refresh"}
           </button>
         </header>
 
@@ -578,7 +578,7 @@ export default function AdminWithdrawalsPage() {
 
           <div className="toolbar">
             <div className="search-box">
-              <span>⌕</span>
+              <span>âŒ•</span>
               <input
                 type="text"
                 placeholder="Search investor, address, currency or ID..."
@@ -615,7 +615,7 @@ export default function AdminWithdrawalsPage() {
               </div>
             ) : filteredWithdrawals.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-icon">↗</div>
+                <div className="empty-icon">â†—</div>
                 <h3>No withdrawals found</h3>
                 <p>
                   There are no withdrawal requests matching your current
@@ -684,7 +684,7 @@ export default function AdminWithdrawalsPage() {
                       <td>
                         <div className="network-cell">
                           <strong>
-                            {withdrawal.network || "—"}
+                            {withdrawal.network || "â€”"}
                           </strong>
                           <span>
                             {withdrawal.currency.toUpperCase()}
@@ -785,7 +785,7 @@ export default function AdminWithdrawalsPage() {
                 onClick={closeAction}
                 disabled={!!actionLoading}
               >
-                ×
+                Ã—
               </button>
             </div>
 

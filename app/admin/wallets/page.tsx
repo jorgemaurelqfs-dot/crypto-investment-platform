@@ -69,7 +69,7 @@ export default function AdminWalletsPage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        window.location.href = "/login";
+        window.location.href = "/crypto-investment-platform/login";
         return;
       }
 
@@ -87,7 +87,7 @@ export default function AdminWalletsPage() {
       }
 
       if (!admin) {
-        window.location.href = "/dashboard";
+        window.location.href = "/crypto-investment-platform/dashboard";
         return;
       }
 

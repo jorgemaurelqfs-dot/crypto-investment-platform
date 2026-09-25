@@ -74,13 +74,13 @@ export default function AdminVerificationsPage() {
         userError
       );
 
-      window.location.href = "/login";
+      window.location.href = "/crypto-investment-platform/login";
 
       return false;
     }
 
     if (!user) {
-      window.location.href = "/login";
+      window.location.href = "/crypto-investment-platform/login";
 
       return false;
     }
@@ -110,7 +110,7 @@ export default function AdminVerificationsPage() {
     }
 
     if (!admin) {
-      window.location.href = "/dashboard";
+      window.location.href = "/crypto-investment-platform/dashboard";
 
       return false;
     }

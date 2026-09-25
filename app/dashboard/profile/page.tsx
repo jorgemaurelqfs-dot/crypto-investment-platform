@@ -127,7 +127,7 @@ export default function ProfilePage() {
       }
 
       if (!user) {
-        window.location.href = "/login";
+        window.location.href = "/crypto-investment-platform/login";
         return;
       }
 
@@ -184,7 +184,7 @@ export default function ProfilePage() {
       }
 
       if (!user) {
-        window.location.href = "/login";
+        window.location.href = "/crypto-investment-platform/login";
         return;
       }
 
